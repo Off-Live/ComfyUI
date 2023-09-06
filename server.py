@@ -30,6 +30,8 @@ from comfy.cli_args import args
 import comfy.utils
 import comfy.model_management
 
+import time
+import gc
 
 class BinaryEventTypes:
     PREVIEW_IMAGE = 1
@@ -446,7 +448,7 @@ class PromptServer():
             print("got prompt")
             resp_code = 200
             out_string = ""
-            json_data =  await request.json()
+            json_data = await request.json()
             json_data = self.trigger_on_prompt(json_data)
 
             if "number" in json_data:
@@ -474,11 +476,70 @@ class PromptServer():
                     self.prompt_queue.put((number, prompt_id, prompt, extra_data, outputs_to_execute))
                     response = {"prompt_id": prompt_id, "number": number, "node_errors": valid[3]}
                     return web.json_response(response)
-                else:
+
+        @routes.post("/prompt-sync")
+        async def post_prompt_sync(request):
+            print("got prompt")
+            response = []
+            json_data = await request.json()
+            json_data = self.trigger_on_prompt(json_data)
+
+            count_images = int(request.rel_url.query.get('count_images', 1))
+            task_id = request.rel_url.query.get('task_id', '')
+
+            print('request')
+            print(count_images)
+            print(task_id)
+
+            if "prompt" not in json_data:
+                return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
+            else:
+                prompt = json_data["prompt"]
+                valid = execution.validate_prompt(prompt)
+                if not valid[0]:
                     print("invalid prompt:", valid[1])
                     return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
-            else:
-                return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
+                else:
+                    for n in range(count_images):
+                        if "number" in json_data:
+                            number = float(json_data['number'])
+                        else:
+                            # message index
+                            number = self.number
+                            if "front" in json_data:
+                                if json_data['front']:
+                                    number = -number
+
+                            self.number += 1
+
+                            # extra data - contains metadata for task
+                            extra_data = {}
+                            if "extra_data" in json_data:
+                                extra_data = json_data["extra_data"]
+                            extra_data["task_id"] = task_id
+                            extra_data["count_images"] = count_images
+
+                            if "client_id" in json_data:
+                                extra_data["client_id"] = json_data["client_id"]
+
+                            # randomize seed
+                            seed = int(time.time()) + number
+                            prompt["3"]["inputs"]["seed"] = seed
+                            
+                            # modify name
+                            prompt["9"]["inputs"]["filename_prefix"] = task_id
+
+                            prompt_id = str(uuid.uuid4())
+                            outputs_to_execute = valid[2]
+
+                            # prompt, prompt_id, extra_data={}, execute_outputs=[]
+                            self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
+
+                            response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3]})
+
+                gc.collect()
+                comfy.model_management.soft_empty_cache()
+                return web.json_response(response)
 
         @routes.post("/queue")
         async def post_queue(request):
@@ -628,3 +689,6 @@ class PromptServer():
                 traceback.print_exc()
 
         return json_data
+
+    def set_exec(self, exec):
+        self.exec = exec
