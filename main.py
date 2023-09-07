@@ -149,6 +149,10 @@ if __name__ == "__main__":
     server = server.PromptServer(loop)
     q = execution.PromptQueue(server)
 
+    # inject exec to server for prompt-sync
+    exec = execution.PromptExecutor(server)
+    server.set_exec(exec)
+
     extra_model_paths_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "extra_model_paths.yaml")
     if os.path.isfile(extra_model_paths_config_path):
         load_extra_path_config(extra_model_paths_config_path)
