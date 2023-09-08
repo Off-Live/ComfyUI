@@ -516,8 +516,6 @@ class PromptServer():
                             extra_data = {}
                             if "extra_data" in json_data:
                                 extra_data = json_data["extra_data"]
-                            extra_data["task_id"] = task_id
-                            extra_data["count_images"] = count_images
 
                             if "client_id" in json_data:
                                 extra_data["client_id"] = json_data["client_id"]
@@ -525,9 +523,6 @@ class PromptServer():
                             # randomize seed
                             seed = int(time.time()) + number
                             prompt["3"]["inputs"]["seed"] = seed
-                            
-                            # modify name
-                            prompt["9"]["inputs"]["filename_prefix"] = task_id
 
                             prompt_id = str(uuid.uuid4())
                             outputs_to_execute = valid[2]
