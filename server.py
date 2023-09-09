@@ -30,6 +30,7 @@ from comfy.cli_args import args
 import comfy.utils
 import comfy.model_management
 
+import math
 import time
 import gc
 
@@ -500,7 +501,9 @@ class PromptServer():
                     print("invalid prompt:", valid[1])
                     return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
                 else:
-                    for n in range(count_images):
+                    batch_size = prompt["5"]["inputs"]["batch_size"]
+                    iteration = math.ceil(count_images / batch_size)
+                    for n in range(iteration):
                         if "number" in json_data:
                             number = float(json_data['number'])
                         else:
