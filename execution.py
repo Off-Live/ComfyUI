@@ -122,6 +122,7 @@ def recursive_execute(server, prompt, outputs, current_item, extra_data, execute
     inputs = prompt[unique_id]['inputs']
     class_type = prompt[unique_id]['class_type']
     class_def = nodes.NODE_CLASS_MAPPINGS[class_type]
+
     if unique_id in outputs:
         return (True, None, None)
 
@@ -132,6 +133,8 @@ def recursive_execute(server, prompt, outputs, current_item, extra_data, execute
             input_unique_id = input_data[0]
             output_index = input_data[1]
             if input_unique_id not in outputs:
+                
+                print('execute inputs: {0}, {1}, {2}, {3}'.format(unique_id, input_unique_id, class_type, class_def))
                 result = recursive_execute(server, prompt, outputs, input_unique_id, extra_data, executed, prompt_id, outputs_ui, object_storage)
                 if result[0] is not True:
                     # Another node failed further upstream
