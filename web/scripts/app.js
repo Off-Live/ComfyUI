@@ -1704,6 +1704,116 @@ export class ComfyApp {
 		this.lastExecutionError = null;
 		this.runningNodeId = null;
 	}
+
+	/**
+	 * Loads workflow data from the jsonString
+	 * @param {String} jsonString
+	 */
+	async handleJson(jsonString) {
+		this.loadGraphData(JSON.parse(jsonString));
+	}
+
+	/**
+	 * Converts the current graph workflow for sending to the API
+	 * @returns The workflow and node links
+	 */
+	async jsonToPrompt(jsonString) {
+		const workflow = JSON.parse(jsonString);
+		const output = {};
+		// Process nodes in order of execution
+		for (const node of this.graph.computeExecutionOrder(false)) {
+			const n = workflow.nodes.find((n) => n.id === node.id);
+
+			if (node.isVirtualNode) {
+				// Don't serialize frontend only nodes but let them make changes
+				if (node.applyToGraph) {
+					node.applyToGraph(workflow);
+				}
+				continue;
+			}
+
+			if (node.mode === 2 || node.mode === 4) {
+				// Don't serialize muted nodes
+				continue;
+			}
+
+			const inputs = {};
+			const widgets = node.widgets;
+
+			// Store all widget values
+			if (widgets) {
+				for (const i in widgets) {
+					const widget = widgets[i];
+					if (!widget.options || widget.options.serialize !== false) {
+						inputs[widget.name] = widget.serializeValue ? await widget.serializeValue(n, i) : widget.value;
+					}
+				}
+			}
+
+			// Store all node links
+			for (let i in node.inputs) {
+				let parent = node.getInputNode(i);
+				if (parent) {
+					let link = node.getInputLink(i);
+					while (parent.mode === 4 || parent.isVirtualNode) {
+						let found = false;
+						if (parent.isVirtualNode) {
+							link = parent.getInputLink(link.origin_slot);
+							if (link) {
+								parent = parent.getInputNode(link.target_slot);
+								if (parent) {
+									found = true;
+								}
+							}
+						} else if (link && parent.mode === 4) {
+							let all_inputs = [link.origin_slot];
+							if (parent.inputs) {
+								all_inputs = all_inputs.concat(Object.keys(parent.inputs))
+								for (let parent_input in all_inputs) {
+									parent_input = all_inputs[parent_input];
+									if (parent.inputs[parent_input].type === node.inputs[i].type) {
+										link = parent.getInputLink(parent_input);
+										if (link) {
+											parent = parent.getInputNode(parent_input);
+										}
+										found = true;
+										break;
+									}
+								}
+							}
+						}
+
+						if (!found) {
+							break;
+						}
+					}
+
+					if (link) {
+						inputs[node.inputs[i].name] = [String(link.origin_id), parseInt(link.origin_slot)];
+					}
+				}
+			}
+
+			output[String(node.id)] = {
+				inputs,
+				class_type: node.comfyClass,
+			};
+		}
+
+		// Remove inputs connected to removed nodes
+
+		for (const o in output) {
+			for (const i in output[o].inputs) {
+				if (Array.isArray(output[o].inputs[i])
+					&& output[o].inputs[i].length === 2
+					&& !output[output[o].inputs[i][0]]) {
+					delete output[o].inputs[i];
+				}
+			}
+		}
+
+		return JSON.stringify({ workflow, output });
+	}
 }
 
 export const app = new ComfyApp();
