@@ -501,9 +501,7 @@ class PromptServer():
                     print("invalid prompt:", valid[1])
                     return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
                 else:
-                    batch_size = prompt["5"]["inputs"]["batch_size"]
-                    iteration = math.ceil(count_images / batch_size)
-                    for n in range(iteration):
+                    for n in range(count_images):
                         if "number" in json_data:
                             number = float(json_data['number'])
                         else:
@@ -525,7 +523,9 @@ class PromptServer():
 
                             # randomize seed
                             seed = int(time.time()) + number
-                            prompt["3"]["inputs"]["seed"] = seed
+                            for key, value in prompt.items():
+                                if "seed" in value["inputs"]:
+                                    value["inputs"]["seed"] = seed
 
                             prompt_id = str(uuid.uuid4())
                             outputs_to_execute = valid[2]
