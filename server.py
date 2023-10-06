@@ -527,6 +527,8 @@ class PromptServer():
                                 for key, value in prompt.items():
                                     if "seed" in value["inputs"]:
                                         value["inputs"]["seed"] = seed
+                                    elif "noise_seed" in value["inputs"]:
+                                        value["inputs"]["noise_seed"] = seed
 
                             prompt_id = str(uuid.uuid4())
                             outputs_to_execute = valid[2]
