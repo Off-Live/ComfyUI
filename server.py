@@ -521,16 +521,18 @@ class PromptServer():
                             if "client_id" in json_data:
                                 extra_data["client_id"] = json_data["client_id"]
 
-                            # randomize seed
-                            seed = int(time.time()) + number
-                            for key, value in prompt.items():
-                                if "seed" in value["inputs"]:
-                                    value["inputs"]["seed"] = seed
+                            # randomize seed after the first iteration
+                            if n > 0:
+                                seed = int(time.time()) + number
+                                for key, value in prompt.items():
+                                    if "seed" in value["inputs"]:
+                                        value["inputs"]["seed"] = seed
 
                             prompt_id = str(uuid.uuid4())
                             outputs_to_execute = valid[2]
 
                             # prompt, prompt_id, extra_data={}, execute_outputs=[]
+                            print("prompt to execute:", prompt)
                             self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
 
                             response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3]})
