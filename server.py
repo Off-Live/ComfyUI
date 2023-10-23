@@ -33,6 +33,7 @@ import comfy.model_management
 import math
 import time
 import gc
+import requests
 
 class BinaryEventTypes:
     PREVIEW_IMAGE = 1
@@ -522,13 +523,19 @@ class PromptServer():
                                 extra_data["client_id"] = json_data["client_id"]
 
                             # randomize seed after the first iteration
-                            if n > 0:
-                                seed = int(time.time()) + number
-                                for key, value in prompt.items():
-                                    if "seed" in value["inputs"]:
-                                        value["inputs"]["seed"] = seed
-                                    elif "noise_seed" in value["inputs"]:
-                                        value["inputs"]["noise_seed"] = seed
+                            # if n > 0:
+                            seed = int(time.time()) + number
+                            for key, value in prompt.items():
+                                # populate seed
+                                if "seed" in value["inputs"]:
+                                    value["inputs"]["seed"] = seed
+                                elif "noise_seed" in value["inputs"]:
+                                    value["inputs"]["noise_seed"] = seed
+                                # populate wildcard
+                                if value["class_type"] == "ImpactWildcardProcessor":
+                                    wildcard_text = value["inputs"]["wildcard_text"]
+                                    value["inputs"]["populated_text"] = self.populate_wildcard(wildcard_text, seed)
+                                    
 
                             prompt_id = str(uuid.uuid4())
                             outputs_to_execute = valid[2]
@@ -694,3 +701,9 @@ class PromptServer():
 
     def set_exec(self, exec):
         self.exec = exec
+
+    def populate_wildcard(self, wildcard_text, seed):
+        sys.path.append(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "custom_nodes/ComfyUI-Impact-Pack/modules/impact"))
+        import wildcards as wildcards
+        return wildcards.process(wildcard_text, seed)
