@@ -709,5 +709,5 @@ class PromptServer():
     def populate_wildcard(self, wildcard_text, seed):
         sys.path.append(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "custom_nodes/ComfyUI-Impact-Pack/modules/impact"))
-        import wildcards as wildcards
+        import impact.wildcards as wildcards
         return wildcards.process(wildcard_text, seed)
