@@ -533,7 +533,7 @@ class PromptServer():
                                 # populate seed
                                 if "seed" in value["inputs"]:
                                     value["inputs"]["seed"] = seed
-                                elif "noise_seed" in value["inputs"]:
+                                elif "noise_seed" in value["inputs"] and value["inputs"]["noise_seed"] == -1:
                                     value["inputs"]["noise_seed"] = seed
                                 # populate wildcard
                                 if value["class_type"] == "ImpactWildcardProcessor":
