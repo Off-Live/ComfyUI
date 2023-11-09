@@ -3,7 +3,23 @@ import { ComfyWidgets } from "./widgets.js";
 import { ComfyUI, $el } from "./ui.js";
 import { api } from "./api.js";
 import { defaultGraph } from "./defaultGraph.js";
-import { getPngMetadata, importA1111, getLatentMetadata } from "./pnginfo.js";
+import { getPngMetadata, getWebpMetadata, importA1111, getLatentMetadata } from "./pnginfo.js";
+
+
+function sanitizeNodeName(string) {
+	let entityMap = {
+	'&': '',
+	'<': '',
+	'>': '',
+	'"': '',
+	"'": '',
+	'`': '',
+	'=': ''
+	};
+	return String(string).replace(/[&<>"'`=\/]/g, function fromEntityMap (s) {
+		return entityMap[s];
+	});
+}
 
 /**
  * @typedef {import("types/comfy").ComfyExtension} ComfyExtension
@@ -1480,6 +1496,7 @@ export class ComfyApp {
 
 			// Find missing node types
 			if (!(n.type in LiteGraph.registered_node_types)) {
+				n.type = sanitizeNodeName(n.type);
 				missingNodeTypes.push(n.type);
 			}
 		}
@@ -1586,6 +1603,16 @@ export class ComfyApp {
 	 * @returns The workflow and node links
 	 */
 	async graphToPrompt() {
+		for (const node of this.graph.computeExecutionOrder(false)) {
+			if (node.isVirtualNode) {
+				// Don't serialize frontend only nodes but let them make changes
+				if (node.applyToGraph) {
+					node.applyToGraph();
+				}
+				continue;
+			}
+		}
+
 		const workflow = this.graph.serialize();
 		const output = {};
 		// Process nodes in order of execution
@@ -1593,10 +1620,6 @@ export class ComfyApp {
 			const n = workflow.nodes.find((n) => n.id === node.id);
 
 			if (node.isVirtualNode) {
-				// Don't serialize frontend only nodes but let them make changes
-				if (node.applyToGraph) {
-					node.applyToGraph(workflow);
-				}
 				continue;
 			}
 
@@ -1788,6 +1811,15 @@ export class ComfyApp {
 					this.loadGraphData(JSON.parse(pngInfo.workflow));
 				} else if (pngInfo.parameters) {
 					importA1111(this.graph, pngInfo.parameters);
+				}
+			}
+		} else if (file.type === "image/webp") {
+			const pngInfo = await getWebpMetadata(file);
+			if (pngInfo) {
+				if (pngInfo.workflow) {
+					this.loadGraphData(JSON.parse(pngInfo.workflow));
+				} else if (pngInfo.Workflow) {
+					this.loadGraphData(JSON.parse(pngInfo.Workflow)); // Support loading workflows from that webp custom node.
 				}
 			}
 		} else if (file.type === "application/json" || file.name?.endsWith(".json")) {
