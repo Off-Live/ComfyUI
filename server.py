@@ -547,13 +547,16 @@ class PromptServer():
 
                             # prompt, prompt_id, extra_data={}, execute_outputs=[]
                             print("prompt to execute:", prompt)
-                            self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
+                            success, error, ex = self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
 
                             response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3]})
 
                 gc.collect()
                 comfy.model_management.soft_empty_cache()
-                return web.json_response(response)
+                if success:
+                    return web.json_response(response)
+                else:
+                    return web.json_response({"error": ex, "node_errors": []}, status=400)
 
         @routes.post("/queue")
         async def post_queue(request):

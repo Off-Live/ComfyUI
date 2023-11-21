@@ -379,12 +379,13 @@ class PromptExecutor:
                 success, error, ex = recursive_execute(self.server, prompt, self.outputs, output_node_id, extra_data, executed, prompt_id, self.outputs_ui, self.object_storage)
                 if success is not True:
                     self.handle_execution_error(prompt_id, prompt, current_outputs, executed, error, ex)
-                    break
+                    return (success, error, ex)
 
             for x in executed:
                 self.old_prompt[x] = copy.deepcopy(prompt[x])
             self.server.last_node_id = None
 
+            return (True, None, None)
 
 
 def validate_inputs(prompt, item, validated):
