@@ -126,9 +126,15 @@ class BaseModel(torch.nn.Module):
                         cond_concat.append(blank_inpaint_image_like(noise))
             data = torch.cat(cond_concat, dim=1)
             out['c_concat'] = comfy.conds.CONDNoiseShape(data)
+
         adm = self.encode_adm(**kwargs)
         if adm is not None:
             out['y'] = comfy.conds.CONDRegular(adm)
+
+        cross_attn = kwargs.get("cross_attn", None)
+        if cross_attn is not None:
+            out['c_crossattn'] = comfy.conds.CONDCrossAttn(cross_attn)
+
         return out
 
     def load_model_weights(self, sd, unet_prefix=""):
@@ -156,11 +162,7 @@ class BaseModel(torch.nn.Module):
 
     def state_dict_for_saving(self, clip_state_dict, vae_state_dict):
         clip_state_dict = self.model_config.process_clip_state_dict_for_saving(clip_state_dict)
-        unet_sd = self.diffusion_model.state_dict()
-        unet_state_dict = {}
-        for k in unet_sd:
-            unet_state_dict[k] = comfy.model_management.resolve_lowvram_weight(unet_sd[k], self.diffusion_model, k)
-
+        unet_state_dict = self.diffusion_model.state_dict()
         unet_state_dict = self.model_config.process_unet_state_dict_for_saving(unet_state_dict)
         vae_state_dict = self.model_config.process_vae_state_dict_for_saving(vae_state_dict)
         if self.get_dtype() == torch.float16:
@@ -321,6 +323,10 @@ class SVD_img2vid(BaseModel):
         latent_image = utils.resize_to_batch_size(latent_image, noise.shape[0])
 
         out['c_concat'] = comfy.conds.CONDNoiseShape(latent_image)
+
+        cross_attn = kwargs.get("cross_attn", None)
+        if cross_attn is not None:
+            out['c_crossattn'] = comfy.conds.CONDCrossAttn(cross_attn)
 
         if "time_conditioning" in kwargs:
             out["time_context"] = comfy.conds.CONDCrossAttn(kwargs["time_conditioning"])
