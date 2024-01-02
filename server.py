@@ -547,6 +547,7 @@ class PromptServer():
 
                             prompt_id = str(uuid.uuid4())
                             outputs_to_execute = valid[2]
+                            self.last_prompt_id = prompt_id
 
                             # prompt, prompt_id, extra_data={}, execute_outputs=[]
                             print("prompt to execute:", prompt)
