@@ -32,6 +32,7 @@ import comfy.model_management
 
 import time
 import gc
+import traceback
 from app.user_manager import UserManager
 
 class BinaryEventTypes:
@@ -489,78 +490,81 @@ class PromptServer():
 
         @routes.post("/prompt-sync")
         async def post_prompt_sync(request):
-            print("got prompt")
-            response = []
-            json_data = await request.json()
-            json_data = self.trigger_on_prompt(json_data)
+            try:
+                print("got prompt")
+                response = []
+                json_data = await request.json()
+                json_data = self.trigger_on_prompt(json_data)
 
-            count_images = int(request.rel_url.query.get('count_images', 1))
-            task_id = request.rel_url.query.get('task_id', '')
+                count_images = int(request.rel_url.query.get('count_images', 1))
+                task_id = request.rel_url.query.get('task_id', '')
 
-            print('request')
-            print(count_images)
-            print(task_id)
+                print('request')
+                print(count_images)
+                print(task_id)
 
-            if "prompt" not in json_data:
-                return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
-            else:
-                prompt = json_data["prompt"]
-                valid = execution.validate_prompt(prompt)
-                if not valid[0]:
-                    print("invalid prompt:", valid[1])
-                    return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
+                if "prompt" not in json_data:
+                    return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
                 else:
-                    for n in range(count_images):
-                        if "number" in json_data:
-                            number = float(json_data['number'])
-                        else:
-                            # message index
-                            number = self.number
-                            if "front" in json_data:
-                                if json_data['front']:
-                                    number = -number
+                    prompt = json_data["prompt"]
+                    valid = execution.validate_prompt(prompt)
+                    if not valid[0]:
+                        print("invalid prompt:", valid[1])
+                        return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
+                    else:
+                        for n in range(count_images):
+                            if "number" in json_data:
+                                number = float(json_data['number'])
+                            else:
+                                # message index
+                                number = self.number
+                                if "front" in json_data:
+                                    if json_data['front']:
+                                        number = -number
 
-                            self.number += 1
+                                self.number += 1
 
-                            # extra data - contains metadata for task
-                            extra_data = {}
-                            if "extra_data" in json_data:
-                                extra_data = json_data["extra_data"]
+                                # extra data - contains metadata for task
+                                extra_data = {}
+                                if "extra_data" in json_data:
+                                    extra_data = json_data["extra_data"]
 
-                            if "client_id" in json_data:
-                                extra_data["client_id"] = json_data["client_id"]
+                                if "client_id" in json_data:
+                                    extra_data["client_id"] = json_data["client_id"]
 
-                            # randomize seed after the first iteration
-                            # if n > 0:
-                            seed = int(time.time()) + number
-                            for key, value in prompt.items():
-                                # populate seed
-                                if "seed" in value["inputs"]:
-                                    value["inputs"]["seed"] = seed
-                                if "noise_seed" in value["inputs"]:
-                                    value["inputs"]["noise_seed"] = seed
-                                # populate wildcard
-                                if value["class_type"] == "ImpactWildcardProcessor":
-                                    wildcard_text = value["inputs"]["wildcard_text"]
-                                    value["inputs"]["populated_text"] = self.populate_wildcard(wildcard_text, seed)
-                                    
+                                # randomize seed after the first iteration
+                                # if n > 0:
+                                seed = int(time.time()) + number
+                                for key, value in prompt.items():
+                                    # populate seed
+                                    if "seed" in value["inputs"]:
+                                        value["inputs"]["seed"] = seed
+                                    if "noise_seed" in value["inputs"]:
+                                        value["inputs"]["noise_seed"] = seed
+                                    # populate wildcard
+                                    if value["class_type"] == "ImpactWildcardProcessor":
+                                        wildcard_text = value["inputs"]["wildcard_text"]
+                                        value["inputs"]["populated_text"] = self.populate_wildcard(wildcard_text, seed)
+                                        
 
-                            prompt_id = str(uuid.uuid4())
-                            outputs_to_execute = valid[2]
-                            self.last_prompt_id = prompt_id
+                                prompt_id = str(uuid.uuid4())
+                                outputs_to_execute = valid[2]
+                                self.last_prompt_id = prompt_id
 
-                            # prompt, prompt_id, extra_data={}, execute_outputs=[]
-                            print("prompt to execute:", prompt)
-                            success, error, ex = self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
+                                # prompt, prompt_id, extra_data={}, execute_outputs=[]
+                                print("prompt to execute:", prompt)
+                                success, error, ex = self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
 
-                            response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3]})
+                                response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3]})
 
-                gc.collect()
-                comfy.model_management.soft_empty_cache()
-                if success:
-                    return web.json_response(response)
-                else:
-                    return web.json_response({"error": ex, "node_errors": []}, status=400)
+                    gc.collect()
+                    comfy.model_management.soft_empty_cache()
+                    if success:
+                        return web.json_response(response)
+                    else:
+                        raise ex
+            except Exception as e:
+                return web.json_response({"error": traceback.format_exc(), "node_errors": []}, status=500)
 
         @routes.post("/queue")
         async def post_queue(request):
