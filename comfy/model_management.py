@@ -387,7 +387,7 @@ def load_models_gpu(models, memory_required=0):
 
         # Need to pull the model from current_loaded_models
         loaded_model = LoadedModel(x)
-        if x.model.__class__.__name__ == 'BaseModel':
+        if x.model.__class__.__name__ == 'BaseModel' and hasattr(x, 'ckpt_name'):
             print(f'Base model name: {x.ckpt_name}')
             for m in current_loaded_models:
                 if m.real_model.__class__.__name__ == 'BaseModel' and x.ckpt_name == m.model.ckpt_name:
