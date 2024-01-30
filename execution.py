@@ -267,9 +267,9 @@ def recursive_output_delete_if_changed(prompt, old_prompt, outputs, current_item
             to_delete = True
     
     for m in comfy.model_management.current_loaded_models:
-        if m.real_model.__class__.__name__ == 'BaseModel' and class_type == 'CheckpointLoaderSimple' and inputs['ckpt_name'] == m.model.ckpt_name:
+        if class_type == 'CheckpointLoaderSimple' and comfy.model_management.check_loaded_model_is_checkpoint_model(m, inputs['ckpt_name']):
             print('========================= Ignore cached model =========================')
-            to_delete = False    
+            to_delete = False 
 
     if to_delete:
         print(f'Going to delete {unique_id}')

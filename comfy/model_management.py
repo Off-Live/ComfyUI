@@ -390,19 +390,17 @@ def load_models_gpu(models, memory_required=0):
         if x.model.__class__.__name__ == 'BaseModel' and hasattr(x, 'ckpt_name'):
             print(f'Base model name: {x.ckpt_name}')
             for m in current_loaded_models:
-                if m.real_model.__class__.__name__ == 'BaseModel' and x.ckpt_name == m.model.ckpt_name:
+                if check_loaded_model_is_checkpoint_model(m, x.ckpt_name):
                     print('Cache HIT!!!')
                     loaded_model = m            
 
         print(f'Loaded_model: {loaded_model.__class__.__name__}, {loaded_model.model.__class__.__name__}')
         print(f'Total current loaded models: {len(current_loaded_models)}')
         for m in current_loaded_models:
-            if m.real_model.__class__.__name__ == 'BaseModel':
-                print(f'  - Model {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
+            print(f'  - Model: {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
+            print(f'    Real model: {m.real_model.__class__.__name__}')
+            if hasattr(m.model, 'ckpt_name'):
                 print(f'    Ckpt: {m.model.ckpt_name}')
-            else:
-                print(f'  - Model {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
-                print(f'    Real model {m.real_model.__class__.__name__}')
 
         if loaded_model in current_loaded_models:
             print('pull model from cache')
@@ -464,8 +462,8 @@ def load_model_gpu(model):
 def cleanup_models():
     to_delete = []
     for i in range(len(current_loaded_models)):
-        # We are gonna keep the BaseModel
-        if current_loaded_models[i].real_model.__class__.__name__ == 'BaseModel':
+        # We are gonna keep the BaseModel that has ckpt_name
+        if hasattr(current_loaded_models[i].model, 'ckpt_name'):
             continue
         if sys.getrefcount(current_loaded_models[i].model) <= 2:
             to_delete = [i] + to_delete
@@ -838,3 +836,7 @@ def throw_exception_if_processing_interrupted():
         if interrupt_processing:
             interrupt_processing = False
             raise InterruptProcessingException()
+        
+def check_loaded_model_is_checkpoint_model(model: LoadedModel, ckpt_name: str):
+    return hasattr(model.model, 'ckpt_name') and model.model.ckpt_name == ckpt_name
+    
