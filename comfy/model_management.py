@@ -382,13 +382,35 @@ def load_models_gpu(models, memory_required=0):
     models_to_load = []
     models_already_loaded = []
     for x in models:
+        print('========================= Load model =========================\n')
+        print(f'x: {x.__class__.__name__}, {x.model.__class__.__name__}')
+
+        # Need to pull the model from current_loaded_models
         loaded_model = LoadedModel(x)
+        if x.model.__class__.__name__ == 'BaseModel':
+            print(f'Base model name: {x.ckpt_name}')
+            for m in current_loaded_models:
+                if m.real_model.__class__.__name__ == 'BaseModel' and x.ckpt_name == m.model.ckpt_name:
+                    print('Cache HIT!!!')
+                    loaded_model = m            
+
+        print(f'Loaded_model: {loaded_model.__class__.__name__}, {loaded_model.model.__class__.__name__}')
+        print(f'Total current loaded models: {len(current_loaded_models)}')
+        for m in current_loaded_models:
+            if m.real_model.__class__.__name__ == 'BaseModel':
+                print(f'  - Model {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
+                print(f'    Ckpt: {m.model.ckpt_name}')
+            else:
+                print(f'  - Model {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
+                print(f'    Real model {m.real_model.__class__.__name__}')
 
         if loaded_model in current_loaded_models:
+            print('pull model from cache')
             index = current_loaded_models.index(loaded_model)
             current_loaded_models.insert(0, current_loaded_models.pop(index))
             models_already_loaded.append(loaded_model)
         else:
+            print(f'load new {x.model.__class__.__name__}')
             if hasattr(x, "model"):
                 print(f"Requested to load {x.model.__class__.__name__}")
             models_to_load.append(loaded_model)
@@ -442,13 +464,27 @@ def load_model_gpu(model):
 def cleanup_models():
     to_delete = []
     for i in range(len(current_loaded_models)):
+        # We are gonna keep the BaseModel
+        if current_loaded_models[i].real_model.__class__.__name__ == 'BaseModel':
+            continue
         if sys.getrefcount(current_loaded_models[i].model) <= 2:
             to_delete = [i] + to_delete
 
+    print('========================= Cleaning up models =========================\n')
+    print(f'Total models: {len(current_loaded_models)}, To delete: {len(to_delete)}')
+
     for i in to_delete:
         x = current_loaded_models.pop(i)
+
+        print(f'Going to unload model: {x.real_model.__class__.__name__}')
+
         x.model_unload()
         del x
+
+    print('========================= Total models after cleaning =========================\n')
+    print(f'Total current models: {len(current_loaded_models)}')
+    for m in current_loaded_models:
+        print(f' - Model: {m.real_model.__class__.__name__}')
 
 def dtype_size(dtype):
     dtype_size = 4

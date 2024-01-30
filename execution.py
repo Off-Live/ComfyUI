@@ -1,12 +1,9 @@
-import os
 import sys
 import copy
-import json
 import logging
 import threading
 import heapq
 import traceback
-import gc
 import inspect
 from typing import List, Literal, NamedTuple, Optional
 
@@ -225,22 +222,36 @@ def recursive_output_delete_if_changed(prompt, old_prompt, outputs, current_item
     is_changed_old = ''
     is_changed = ''
     to_delete = False
+
+    print('Input recursive_output_delete_if_changed')
+    print(f'Current item: {current_item}, outputs: {outputs.keys()}')
+    print(f'Unique ID: {unique_id}, inputs: {inputs}, class_type: {class_type}, class_def: {class_def}')
+
     if hasattr(class_def, 'IS_CHANGED'):
         if unique_id in old_prompt and 'is_changed' in old_prompt[unique_id]:
+            print('Case1')
             is_changed_old = old_prompt[unique_id]['is_changed']
         if 'is_changed' not in prompt[unique_id]:
+            print('Case2')
             input_data_all = get_input_data(inputs, class_def, unique_id, outputs)
             if input_data_all is not None:
                 try:
                     #is_changed = class_def.IS_CHANGED(**input_data_all)
                     is_changed = map_node_over_list(class_def, input_data_all, "IS_CHANGED")
                     prompt[unique_id]['is_changed'] = is_changed
+
+                    print('========================= Hijack into checking is_changed =========================\n')
+                    print(f'{class_def}: {is_changed}')
+                    print(input_data_all)
+
                 except:
                     to_delete = True
         else:
+            print('Case3')
             is_changed = prompt[unique_id]['is_changed']
 
     if unique_id not in outputs:
+        print('Case4')
         return True
 
     if not to_delete:
@@ -263,10 +274,18 @@ def recursive_output_delete_if_changed(prompt, old_prompt, outputs, current_item
                         break
         else:
             to_delete = True
+    
+    for m in comfy.model_management.current_loaded_models:
+        if m.real_model.__class__.__name__ == 'BaseModel' and class_type == 'CheckpointLoaderSimple' and inputs['ckpt_name'] == m.model.ckpt_name:
+            print('========================= Ignore cached model =========================')
+            to_delete = False    
 
     if to_delete:
+        print(f'Going to delete {unique_id}')
         d = outputs.pop(unique_id)
         del d
+
+    print(f'Result outputs from recursive_output_delete_if_changed: {outputs.keys()}')
     return to_delete
 
 class PromptExecutor:
@@ -359,6 +378,13 @@ class PromptExecutor:
             for o in to_delete:
                 d = self.object_storage.pop(o)
                 del d
+
+            print('========================= prompt =========================\n')
+            print(prompt)
+            print('========================= old prompt =========================\n')
+            print(self.old_prompt)
+            print('========================= outputs =========================\n')
+            print(self.outputs.keys())
 
             for x in prompt:
                 recursive_output_delete_if_changed(prompt, self.old_prompt, self.outputs, x)
