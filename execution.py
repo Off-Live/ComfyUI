@@ -229,29 +229,20 @@ def recursive_output_delete_if_changed(prompt, old_prompt, outputs, current_item
 
     if hasattr(class_def, 'IS_CHANGED'):
         if unique_id in old_prompt and 'is_changed' in old_prompt[unique_id]:
-            print('Case1')
             is_changed_old = old_prompt[unique_id]['is_changed']
         if 'is_changed' not in prompt[unique_id]:
-            print('Case2')
             input_data_all = get_input_data(inputs, class_def, unique_id, outputs)
             if input_data_all is not None:
                 try:
                     #is_changed = class_def.IS_CHANGED(**input_data_all)
                     is_changed = map_node_over_list(class_def, input_data_all, "IS_CHANGED")
                     prompt[unique_id]['is_changed'] = is_changed
-
-                    print('========================= Hijack into checking is_changed =========================\n')
-                    print(f'{class_def}: {is_changed}')
-                    print(input_data_all)
-
                 except:
                     to_delete = True
         else:
-            print('Case3')
             is_changed = prompt[unique_id]['is_changed']
 
     if unique_id not in outputs:
-        print('Case4')
         return True
 
     if not to_delete:
