@@ -838,5 +838,7 @@ def throw_exception_if_processing_interrupted():
             raise InterruptProcessingException()
         
 def check_loaded_model_is_checkpoint_model(model: LoadedModel, ckpt_name: str):
-    return hasattr(model.model, 'ckpt_name') and model.model.ckpt_name == ckpt_name
+    is_checkpoint = hasattr(model.model, 'ckpt_name') and model.model.ckpt_name == ckpt_name
+    print(f"Checking ckpt: {ckpt_name} - {is_checkpoint}")
+    return is_checkpoint
     

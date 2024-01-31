@@ -482,8 +482,8 @@ def load_checkpoint_guess_config(ckpt_path, output_vae=True, output_clip=True, o
     if output_model:
         model_patcher = comfy.model_patcher.ModelPatcher(model, load_device=load_device, offload_device=model_management.unet_offload_device(), current_device=inital_load_device)
         
-        print("injected ckpt name into model")
-        setattr(model_patcher, "ckpt_name", ckpt_path.split("/")[-1])
+        print(f"injected ckpt name into model {ckpt_path.split('/')[-1]}")
+        setattr(model_patcher, "ckpt_name", ckpt_path.split('/')[-1])
         
         if inital_load_device != torch.device("cpu"):
             print("loaded straight to GPU")
