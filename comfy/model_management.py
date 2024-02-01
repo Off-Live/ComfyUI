@@ -462,8 +462,8 @@ def load_model_gpu(model):
 def cleanup_models():
     to_delete = []
     for i in range(len(current_loaded_models)):
-        # We are gonna keep the BaseModel that has ckpt_name
-        if hasattr(current_loaded_models[i].model, 'ckpt_name'):
+        # We are gonna keep the BaseModel (Definitely need to think more here)
+        if is_base_model(current_loaded_models[i]):
             continue
         if sys.getrefcount(current_loaded_models[i].model) <= 2:
             to_delete = [i] + to_delete
@@ -841,3 +841,5 @@ def check_loaded_model_is_checkpoint_model(model: LoadedModel, ckpt_name: str):
     is_checkpoint = hasattr(model.model, 'ckpt_name') and model.model.ckpt_name == ckpt_name
     return is_checkpoint
     
+def is_base_model(model: LoadedModel):
+    return model.real_model.__class__.__name__ == 'BaseModel'
