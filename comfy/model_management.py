@@ -399,7 +399,7 @@ def load_models_gpu(models, memory_required=0):
         for m in current_loaded_models:
             print(f'  - Model: {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
             print(f'    Real model: {m.real_model.__class__.__name__}')
-            if hasattr(m.model, 'ckpt_name'):
+            if has_ckpt_name(m.model):
                 print(f'    Ckpt: {m.model.ckpt_name}')
 
         if loaded_model in current_loaded_models:
