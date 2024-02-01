@@ -387,7 +387,7 @@ def load_models_gpu(models, memory_required=0):
 
         # Need to pull the model from current_loaded_models
         loaded_model = LoadedModel(x)
-        if x.model.__class__.__name__ == 'BaseModel' and hasattr(x, 'ckpt_name'):
+        if is_base_model(x) and has_ckpt_name(x):
             print(f'Base model name: {x.ckpt_name}')
             for m in current_loaded_models:
                 if check_loaded_model_is_checkpoint_model(m, x.ckpt_name):
@@ -463,7 +463,7 @@ def cleanup_models():
     to_delete = []
     for i in range(len(current_loaded_models)):
         # We are gonna keep the BaseModel (Definitely need to think more here)
-        if is_base_model(current_loaded_models[i]):
+        if is_base_model(current_loaded_models[i]) and has_ckpt_name(current_loaded_models[i]):
             continue
         if sys.getrefcount(current_loaded_models[i].model) <= 2:
             to_delete = [i] + to_delete
@@ -838,8 +838,10 @@ def throw_exception_if_processing_interrupted():
             raise InterruptProcessingException()
         
 def check_loaded_model_is_checkpoint_model(model: LoadedModel, ckpt_name: str):
-    is_checkpoint = hasattr(model.model, 'ckpt_name') and model.model.ckpt_name == ckpt_name
-    return is_checkpoint
+    return is_base_model(model) and has_ckpt_name(model) and model.model.ckpt_name == ckpt_name
     
 def is_base_model(model: LoadedModel):
     return model.real_model.__class__.__name__ == 'BaseModel'
+
+def has_ckpt_name(model: LoadedModel):
+    return hasattr(model.model, 'ckpt_name')
