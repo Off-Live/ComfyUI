@@ -387,7 +387,7 @@ def load_models_gpu(models, memory_required=0):
 
         # Need to pull the model from current_loaded_models
         loaded_model = LoadedModel(x)
-        if is_base_model(x) and has_ckpt_name(x):
+        if is_base_model(loaded_model) and has_ckpt_name(loaded_model):
             print(f'Base model name: {x.ckpt_name}')
             for m in current_loaded_models:
                 if check_loaded_model_is_checkpoint_model(m, x.ckpt_name):
@@ -399,7 +399,7 @@ def load_models_gpu(models, memory_required=0):
         for m in current_loaded_models:
             print(f'  - Model: {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
             print(f'    Real model: {m.real_model.__class__.__name__}')
-            if has_ckpt_name(m.model):
+            if has_ckpt_name(m):
                 print(f'    Ckpt: {m.model.ckpt_name}')
 
         if loaded_model in current_loaded_models:
