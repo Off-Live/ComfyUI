@@ -841,7 +841,7 @@ def check_loaded_model_is_checkpoint_model(model: LoadedModel, ckpt_name: str):
     return is_base_model(model) and has_ckpt_name(model) and model.model.ckpt_name == ckpt_name
     
 def is_base_model(model: LoadedModel):
-    return model.real_model.__class__.__name__ == 'BaseModel'
+    return model.model.model.__class__.__name__ == 'BaseModel'
 
 def has_ckpt_name(model: LoadedModel):
     return hasattr(model.model, 'ckpt_name')
