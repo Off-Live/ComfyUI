@@ -344,8 +344,9 @@ def minimum_inference_memory():
 def unload_model_clones(model):
     to_unload = []
     for i in range(len(current_loaded_models)):
-        if model.is_clone(current_loaded_models[i].model):
-            to_unload = [i] + to_unload
+        if not has_ckpt_name(current_loaded_models[i]):
+            if model.is_clone(current_loaded_models[i].model):
+                to_unload = [i] + to_unload
 
     for i in to_unload:
         print("unload clone", i)
@@ -396,11 +397,11 @@ def load_models_gpu(models, memory_required=0):
 
         print(f'Loaded_model: {loaded_model.__class__.__name__}, {loaded_model.model.__class__.__name__}')
         print(f'Total current loaded models: {len(current_loaded_models)}')
-        for m in current_loaded_models:
-            print(f'  - Model: {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
-            print(f'    Real model: {m.real_model.__class__.__name__}')
-            if has_ckpt_name(m):
-                print(f'    Ckpt: {m.model.ckpt_name}')
+        # for m in current_loaded_models:
+        #     print(f'  - Model: {m.model.__class__.__name__}, {m.model.model.__class__.__name__}')
+        #     print(f'    Real model: {m.real_model.__class__.__name__}')
+        #     if has_ckpt_name(m):
+        #         print(f'    Ckpt: {m.model.ckpt_name}')
 
         if loaded_model in current_loaded_models:
             print('pull model from cache')
@@ -475,6 +476,8 @@ def cleanup_models():
         x = current_loaded_models.pop(i)
 
         print(f'Going to unload model: {x.real_model.__class__.__name__}')
+        # if has_ckpt_name(x):
+        #     print(f'- Ckpt: {m.model.ckpt_name}')
 
         x.model_unload()
         del x
