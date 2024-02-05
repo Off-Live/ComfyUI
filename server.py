@@ -499,10 +499,6 @@ class PromptServer():
                 count_images = int(request.rel_url.query.get('count_images', 1))
                 task_id = request.rel_url.query.get('task_id', '')
 
-                print('request')
-                print(count_images)
-                print(task_id)
-
                 if "prompt" not in json_data:
                     return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
                 else:
@@ -553,9 +549,12 @@ class PromptServer():
 
                                 # prompt, prompt_id, extra_data={}, execute_outputs=[]
                                 print("prompt to execute:", prompt)
+                                exec_start_time = time.perf_counter()
                                 success, error, ex = self.exec.execute(prompt, prompt_id, extra_data, outputs_to_execute)
+                                exec_time = time.perf_counter() - exec_start_time
+                                print("Prompt executed in {:.2f} seconds".format(exec_time))
 
-                                response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3]})
+                                response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3], "exec_time": exec_time})
 
                     gc.collect()
                     comfy.model_management.soft_empty_cache()
