@@ -492,40 +492,37 @@ class PromptServer():
             try:
                 print("got prompt")
                 response = []
-                json_data = await request.json()
-                json_data = self.trigger_on_prompt(json_data)
-
-                count_images = int(request.rel_url.query.get('count_images', 1))
-                task_id = request.rel_url.query.get('task_id', '')
-
-                if "prompt" not in json_data:
-                    return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
-                else:
-                    prompt = json_data["prompt"]
-                    valid = execution.validate_prompt(prompt)
-                    if not valid[0]:
-                        print("invalid prompt:", valid[1])
-                        return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
+                prompts = await request.json()
+                
+                for json_prompt in prompts:
+                    if "prompt" not in json_prompt:
+                        return web.json_response({"error": "no prompt", "node_errors": []}, status=400)
                     else:
-                        for n in range(count_images):
-                            if "number" in json_data:
-                                number = float(json_data['number'])
+                        json_prompt = self.trigger_on_prompt(json_prompt)
+                        prompt = json_prompt["prompt"]
+                        valid = execution.validate_prompt(prompt)
+                        if not valid[0]:
+                            print("invalid prompt:", valid[1])
+                            return web.json_response({"error": valid[1], "node_errors": valid[3]}, status=400)
+                        else:
+                            if "number" in json_prompt:
+                                number = float(json_prompt['number'])
                             else:
                                 # message index
                                 number = self.number
-                                if "front" in json_data:
-                                    if json_data['front']:
+                                if "front" in json_prompt:
+                                    if json_prompt['front']:
                                         number = -number
 
                                 self.number += 1
 
                                 # extra data - contains metadata for task
                                 extra_data = {}
-                                if "extra_data" in json_data:
-                                    extra_data = json_data["extra_data"]
+                                if "extra_data" in json_prompt:
+                                    extra_data = json_prompt["extra_data"]
 
-                                if "client_id" in json_data:
-                                    extra_data["client_id"] = json_data["client_id"]
+                                if "client_id" in json_prompt:
+                                    extra_data["client_id"] = json_prompt["client_id"]
 
                                 # randomize seed after the first iteration
                                 # if n > 0:
@@ -540,7 +537,6 @@ class PromptServer():
                                     if value["class_type"] == "ImpactWildcardProcessor":
                                         wildcard_text = value["inputs"]["wildcard_text"]
                                         value["inputs"]["populated_text"] = self.populate_wildcard(wildcard_text, seed)
-                                        
 
                                 prompt_id = str(uuid.uuid4())
                                 outputs_to_execute = valid[2]
@@ -555,12 +551,12 @@ class PromptServer():
 
                                 response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3], "exec_time": exec_time})
 
-                    gc.collect()
-                    comfy.model_management.soft_empty_cache()
-                    if success:
-                        return web.json_response(response)
-                    else:
-                        raise ex
+                        if not success:
+                            raise ex
+
+                gc.collect()
+                comfy.model_management.soft_empty_cache()
+                return web.json_response(response)
             except Exception as e:
                 return web.json_response({"error": traceback.format_exc(), "node_errors": []}, status=500)
 
