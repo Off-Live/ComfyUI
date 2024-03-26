@@ -550,12 +550,11 @@ class PromptServer():
                                 print("Prompt executed in {:.2f} seconds".format(exec_time))
 
                                 response.append({"prompt_id": prompt_id, "number": number, "node_errors": valid[3], "exec_time": exec_time})
-
+                                gc.collect()
+                                comfy.model_management.soft_empty_cache()
                         if not success:
                             raise ex
 
-                gc.collect()
-                comfy.model_management.soft_empty_cache()
                 return web.json_response(response)
             except Exception as e:
                 return web.json_response({"error": traceback.format_exc(), "node_errors": []}, status=500)
